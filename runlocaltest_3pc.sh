@@ -1,33 +1,62 @@
 # --------------------------------------------------------------------------------
-# SYNOPSIS
+# USER TEST SETUP
+TEST_DURATION_SECS=3
+DO_SKIP_AGENT=0
+DO_SKIP_LOADGEN=0
+
 # --------------------------------------------------------------------------------
 
 RUNDIR=`pwd`/run.`date +'%Y%m%d.%H:%M:%S'`
-LOGDIR=$RUNDIR/mylogs
 BUILDDIR=/Users/abj/mitdci.arm/opencbdc-tx/build
 
 mkdir $RUNDIR
+# --------------------------------------------------------------------------------
+# A consistent link point for current run:
+rm -f run.current
+ln -s $RUNDIR run.current
+
+# LOGDIR=$RUNDIR/mylogs
+LOGDIR=`pwd`/run.current/mylogs
 mkdir $LOGDIR
 
 # --------------------------------------------------------------------------------
-cd $RUNDIR
-
+echo "----------"
+echo "Test Specs:"
+echo "    TEST_DURATION_SECS=$TEST_DURATION_SECS"
+echo "    DO_SKIP_AGENT=$DO_SKIP_AGENT"
+echo "    DO_SKIP_LOADGEN=$DO_SKIP_LOADGEN"
+echo ""
+echo "Build dir: $BUILDDIR"
+echo "Run dir (run.current): $RUNDIR"
+echo "Log dir: $LOGDIR"
 # --------------------------------------------------------------------------------
+cd run.current
+# --------------------------------------------------------------------------------
+
 RUN () {
     CMD=$1
     SLEEP_SECS=$2
     PRINT_ONLY=$3
 
     echo "----------"
-    echo "Run Dir: `pwd`"
-    if [[ -z "$PRINT_ONLY" ]]; then
+    if [[ -z "$PRINT_ONLY" || "$PRINT_ONLY" = "0" ]]; then
+        echo `date`
         echo "Running: $CMD"
         eval $CMD
         echo "Waiting $SLEEP_SECS secs ..."
         sleep $SLEEP_SECS
     else
-        echo "Skipping: $CMD"        
+        echo "SKIPPING: $CMD"        
     fi
+}
+
+KILL_ALL () {
+    echo "`date`: Stopping tests ..."
+    kill `ps -aefww | grep -v grep | grep shard0 | awk {'print $2'}`
+    sleep 3
+    echo "Killed all processes."
+    echo "Checking for any remaining processes ..."
+    RUN "ps -aefww | grep -v grep | grep shard0" 0
 }
 
 CONFIG_ARGS=\
@@ -37,28 +66,53 @@ CONFIG_ARGS=\
  --node_id=0 \
  --component_id=0 \
  --agent_count=1 \
- --agent0_endpoint=localhost:6666 \
+ --agent0_endpoint=localhost:8080 \
  --ticket_machine_count=1 \
- --ticket_machine0_endpoint=localhost:7777"
+ --ticket_machine0_endpoint=localhost:7777 \
+ --loglevel=INFO"
 
-RUN "$BUILDDIR/src/3pc/runtime_locking_shard/runtime_locking_shardd $CONFIG_ARGS \
- --loglevel=WARN \
- > $LOGDIR/shardd.out 2>&1 &" 3
+SLEEP_AFTER=3
+RUN "$BUILDDIR/src/3pc/runtime_locking_shard/runtime_locking_shardd $CONFIG_ARGS > $LOGDIR/shardd.out 2>&1 &" \
+    $SLEEP_AFTER
 
-RUN "$BUILDDIR/src/3pc/ticket_machine/ticket_machined $CONFIG_ARGS \
- --loglevel=WARN \
- > $LOGDIR/ticketm.out 2>&1 &" 3
+RUN "$BUILDDIR/src/3pc/ticket_machine/ticket_machined $CONFIG_ARGS > $LOGDIR/ticketm.out 2>&1 &" \
+    $SLEEP_AFTER
 
-RUN "$BUILDDIR/src/3pc/agent/agentd $CONFIG_ARGS \
- --loglevel=WARN \
- > $LOGDIR/agentd.out 2>&1 &" 3
+RUN "$BUILDDIR/src/3pc/agent/agentd $CONFIG_ARGS > $LOGDIR/agentd.out 2>&1 &" \
+    $SLEEP_AFTER $DO_SKIP_AGENT
 
+SLEEP_AFTER=0
 RUN "$BUILDDIR/tools/bench/3pc/evm/evm_bench $CONFIG_ARGS \
- --loadgen_accounts=128 \
+ --loadgen_accounts=16 \
  --loadgen_txtype=erc20 \
  --telemetry=1 \
- > $LOGDIR/evm_bench.out 2>&1 &" 0 1
+ > $LOGDIR/evm_bench.out 2>&1 &" \
+    $SLEEP_AFTER $DO_SKIP_LOADGEN
 
 RUN "ps -aefww | grep -v grep | grep shard0" 0
 
-# kill `ps -aefww | grep -v grep | grep shard0 | awk {'print $2'}`
+# --------------------------------------------------------------------------------
+# Make it easy to clean up processes:
+echo "----------"
+if (( $TEST_DURATION_SECS > 0 )); then
+    echo "`date`: Running test for $TEST_DURATION_SECS seconds ..."
+    sleep $TEST_DURATION_SECS
+    KILL_ALL
+else
+    echo "Processes are running. Enter 'q' to kill all processes and quit."
+    read USERINPUT
+    if [[ $USERINPUT = "q" ]]
+    then
+        KILL_ALL
+    else
+        echo "Quitting this shell, underlying processes are still running (see above)"
+    fi
+fi
+
+# --------------------------------------------------------------------------------
+echo "----------"
+# sed is to fix corrupt lines: put newline where there should be one
+cat $LOGDIR/*.out | sed -E 's/(.)(\[202)/\1\n\2/g' | sort > $LOGDIR/combined.out
+echo "Made $LOGDIR/combined.out"
+
+echo "ALL DONE"

@@ -1,0 +1,5 @@
+# Ignore test run outputs
+run.*
+*~
+combined.out.current
+log_use_cases
