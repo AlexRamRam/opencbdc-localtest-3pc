@@ -1,8 +1,8 @@
 # --------------------------------------------------------------------------------
 # USER TEST SETUP
-TEST_DURATION_SECS=3
 DO_SKIP_AGENT=0
-DO_SKIP_LOADGEN=0
+DO_SKIP_LOADGEN=1
+LOADGEN_RUN_DURATION=3
 
 # --------------------------------------------------------------------------------
 
@@ -22,9 +22,9 @@ mkdir $LOGDIR
 # --------------------------------------------------------------------------------
 echo "----------"
 echo "Test Specs:"
-echo "    TEST_DURATION_SECS=$TEST_DURATION_SECS"
 echo "    DO_SKIP_AGENT=$DO_SKIP_AGENT"
 echo "    DO_SKIP_LOADGEN=$DO_SKIP_LOADGEN"
+echo "    LOADGEN_RUN_DURATION=$LOADGEN_RUN_DURATION"
 echo ""
 echo "Build dir: $BUILDDIR"
 echo "Run dir (run.current): $RUNDIR"
@@ -94,9 +94,9 @@ RUN "ps -aefww | grep -v grep | grep shard0" 0
 # --------------------------------------------------------------------------------
 # Make it easy to clean up processes:
 echo "----------"
-if (( $TEST_DURATION_SECS > 0 )); then
-    echo "`date`: Running test for $TEST_DURATION_SECS seconds ..."
-    sleep $TEST_DURATION_SECS
+if [[ "$DO_SKIP_LOADGEN" = "0" ]]; then
+    echo "`date`: Running test for $LOADGEN_RUN_DURATION seconds ..."
+    sleep $LOADGEN_RUN_DURATION
     KILL_ALL
 else
     echo "Processes are running. Enter 'q' to kill all processes and quit."
