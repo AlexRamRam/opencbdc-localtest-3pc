@@ -3,6 +3,7 @@
 DO_SKIP_AGENT=0
 DO_SKIP_LOADGEN=1
 LOADGEN_RUN_DURATION=3
+LOGLEVEL=INFO
 
 # --------------------------------------------------------------------------------
 
@@ -51,12 +52,24 @@ RUN () {
 }
 
 KILL_ALL () {
-    echo "`date`: Stopping tests ..."
-    kill `ps -aefww | grep -v grep | grep shard0 | awk {'print $2'}`
-    sleep 3
-    echo "Killed all processes."
+    PCOUNT=`ps -aefww | grep -v grep | grep shard0 | awk {'print $2'} | wc -l`
+    if (( $PCOUNT == 0 )); then
+        echo "OK: No server processes running."
+    else
+        echo "`date`: Stopping $PCOUNT server processes ..."
+        kill `ps -aefww | grep -v grep | grep shard0 | awk {'print $2'}`
+        sleep 1
+
+        PCOUNT=`ps -aefww | grep -v grep | grep shard0 | awk {'print $2'} | wc -l`
+        if (( $PCOUNT == 0 )); then
+            echo "OK: Killed all processes."
+        else
+            echo "ERROR: Could not kill server processes"
+        fi
+    fi
+    
     echo "Checking for any remaining processes ..."
-    RUN "ps -aefww | grep -v grep | grep shard0" 0
+    RUN "ps -aefww | grep -v grep | grep shard0" 0        
 }
 
 CONFIG_ARGS=\
@@ -69,7 +82,9 @@ CONFIG_ARGS=\
  --agent0_endpoint=localhost:8080 \
  --ticket_machine_count=1 \
  --ticket_machine0_endpoint=localhost:7777 \
- --loglevel=INFO"
+ --loglevel=$LOGLEVEL"
+
+KILL_ALL
 
 SLEEP_AFTER=3
 RUN "$BUILDDIR/src/3pc/runtime_locking_shard/runtime_locking_shardd $CONFIG_ARGS > $LOGDIR/shardd.out 2>&1 &" \
