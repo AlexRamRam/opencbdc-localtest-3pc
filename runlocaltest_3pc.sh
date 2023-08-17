@@ -87,17 +87,17 @@ CONFIG_ARGS=\
 KILL_ALL
 
 SLEEP_AFTER=3
-RUN "$BUILDDIR/src/3pc/runtime_locking_shard/runtime_locking_shardd $CONFIG_ARGS > $LOGDIR/shardd.out 2>&1 &" \
+RUN "$BUILDDIR/src/parsec/runtime_locking_shard/runtime_locking_shardd $CONFIG_ARGS > $LOGDIR/shardd.out 2>&1 &" \
     $SLEEP_AFTER
 
-RUN "$BUILDDIR/src/3pc/ticket_machine/ticket_machined $CONFIG_ARGS > $LOGDIR/ticketm.out 2>&1 &" \
+RUN "$BUILDDIR/src/parsec/ticket_machine/ticket_machined $CONFIG_ARGS > $LOGDIR/ticketm.out 2>&1 &" \
     $SLEEP_AFTER
 
-RUN "$BUILDDIR/src/3pc/agent/agentd $CONFIG_ARGS > $LOGDIR/agentd.out 2>&1 &" \
+RUN "$BUILDDIR/src/parsec/agent/agentd $CONFIG_ARGS > $LOGDIR/agentd.out 2>&1 &" \
     $SLEEP_AFTER $DO_SKIP_AGENT
 
 SLEEP_AFTER=0
-RUN "$BUILDDIR/tools/bench/3pc/evm/evm_bench $CONFIG_ARGS \
+RUN "$BUILDDIR/tools/bench/parsec/evm/evm_bench $CONFIG_ARGS \
  --loadgen_accounts=16 \
  --loadgen_txtype=erc20 \
  --telemetry=1 \
