@@ -8,7 +8,8 @@ LOGLEVEL=INFO
 # --------------------------------------------------------------------------------
 
 RUNDIR=`pwd`/run.`date +'%Y%m%d.%H:%M:%S'`
-BUILDDIR=/Users/abj/mitdci.arm/opencbdc-tx/build
+REPODIR=$HOME/mitdci/repos
+BUILDDIR=$REPODIR/opencbdc-tx/build
 
 mkdir $RUNDIR
 # --------------------------------------------------------------------------------
