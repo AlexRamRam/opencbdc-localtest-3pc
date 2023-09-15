@@ -3,7 +3,7 @@
 DO_SKIP_AGENT=0
 DO_SKIP_LOADGEN=1
 LOADGEN_RUN_DURATION=3
-LOGLEVEL=INFO
+LOGLEVEL=TRACE
 
 # --------------------------------------------------------------------------------
 
